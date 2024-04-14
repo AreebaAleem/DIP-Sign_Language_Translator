@@ -10,7 +10,7 @@ offset = 20
 imgSize = 300
 counter = 0
 
-folder = "/Users/Dell XPS White/Desktop/MATLAB/DIP-Sign_Language_Detection/Data/Home"
+folder = "/Users/Dell XPS White/Desktop/MATLAB/Data/Home"
 
 while True:
     success , img = cap.read ()

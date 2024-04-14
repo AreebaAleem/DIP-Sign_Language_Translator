@@ -1,10 +1,10 @@
 import cv2
 from cvzone.HandTrackingModule import HandDetector
-from cvzone.ClassificationModule import Classifier
 import numpy as np
 import math
 import pyttsx3
 import threading
+import tensorflow as tf
 
 # Function for text-to-speech synthesis
 def speak(text):
@@ -20,13 +20,27 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # Set the height of the frames
 cap.set(cv2.CAP_PROP_FPS, 30)  # Set the frame rate
 
 detector = HandDetector(maxHands=1)
-classifier = Classifier("/Users/Dell XPS White/Desktop/Model/keras_model.h5", "/Users/Dell XPS White/Desktop/Model/labels.txt")
 offset = 20
 imgSize = 300
-counter = 0
 frame_skip = 5  # Process every 5th frame
 
 labels = ["Dad", "Hello", "No", "Thank You", "Yes"]
+
+# Load the trained model
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(imgSize, imgSize, 3)),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D((2, 2)),
+    tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    tf.keras.layers.Dropout(0.5),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01)),
+    tf.keras.layers.Dense(len(labels), activation='softmax')
+])
+
+# Load the trained weights
+model.load_weights('model_weights.h5')
 
 while True:
     for i in range(frame_skip):
@@ -60,11 +74,12 @@ while True:
                 hGap = math.ceil((imgSize - hCal) / 2)
                 imgWhite[hGap: hCal + hGap, :] = imgResize
 
-            # Get the prediction and index from the classifier
-            prediction, index = classifier.getPrediction(imgWhite, draw=False)
+            # Perform inference using the loaded model
+            prediction = model.predict(np.expand_dims(imgWhite, axis=0))
+            index = np.argmax(prediction)
+            label_text = labels[index]
 
             # Speak out the recognized label using threading
-            label_text = labels[index]
             threading.Thread(target=speak, args=(label_text,)).start()
 
             cv2.rectangle(imgOutput, (x-offset, y-offset-70), (x-offset+400, y-offset+60-50), (0, 255, 0), cv2.FILLED)
